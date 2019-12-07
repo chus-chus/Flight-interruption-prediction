@@ -4,10 +4,10 @@ from pyspark.sql import Row
 from pyspark.sql import SparkSession
 import numpy as np
 
-DWuser = "alex.carrillo.alza"
-DWpass = "DB210499"
-# DWuser = "jesus.maria.antonanzas"
-# DWpass = "DB200598"
+# DWuser = "alex.carrillo.alza"
+# DWpass = "DB210499"
+DWuser = "jesus.maria.antonanzas"
+DWpass = "DB200598"
 
 # Marks flights 7 days before an unsch. maint. event.
 def mark_days_before(t, it):
