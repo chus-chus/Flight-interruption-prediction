@@ -8,10 +8,15 @@ import data_management as DMpipe
 
 HADOOP_HOME = "./resources/hadoop_home"
 JDBC_JAR = "./resources/postgresql-42.2.8.jar"
-PYSPARK_PYTHON = "python3.7"
-PYSPARK_DRIVER_PYTHON = "python3.7"
+PYSPARK_PYTHON = "python3.6"
+PYSPARK_DRIVER_PYTHON = "python3.6"
 
 if(__name__== "__main__"):
+
+    # Python compatibility (just for Alex, sorry!)
+    if (len(sys.argv) == 2 and sys.argv[1] == 'a'):
+        PYSPARK_PYTHON = PYSPARK_DRIVER_PYTHON = "python3.7"
+
     os.environ["HADOOP_HOME"] = HADOOP_HOME
     sys.path.append(HADOOP_HOME + "\\bin")
     os.environ["PYSPARK_PYTHON"] = PYSPARK_PYTHON
@@ -38,9 +43,7 @@ if(__name__== "__main__"):
         if i < 100:
             print(x)
             i = i+1
-        if x[1][4] == 'yes': nyes = nyes + 1
-        elif x[1][4] == 'no': no = no + 1
+        # if x[1][4] == 'yes': nyes = nyes + 1
+        # elif x[1][4] == 'no': no = no + 1
     print("yes:", nyes,"no:", no)
     # 19560 2085
-
-    # prueba 3 github
