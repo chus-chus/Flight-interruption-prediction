@@ -23,9 +23,9 @@ def mark_days_before(t, it):
             distance = (t[it][0] - t[nextval][0]).days
     return
 
-# Given a list of lists [date (descending), unscheduledoutofservice], marks, for each
-# day, if there is an unscheduled maintenance event in the next 7 days ('yes')
-# or not ('no'). The marks substitute 'unscheduledoutofservice'.
+# Given a list of lists [date (descending), unscheduledoutofservice], marks,
+# for each day, if there is an unscheduled maintenance event in the next
+# 7 days ('yes') or not ('no'). The marks substitute 'unscheduledoutofservice'.
 def add_response(t):
     t = list(t)
     it = 0
