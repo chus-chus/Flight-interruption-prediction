@@ -42,3 +42,5 @@ if(__name__== "__main__"):
         elif x[1][4] == 'no': no = no + 1
     print("yes:", nyes,"no:", no)
     # 19560 2085
+
+    # prueba 2 github
