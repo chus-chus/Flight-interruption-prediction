@@ -8,8 +8,8 @@ import data_management as DMpipe
 
 HADOOP_HOME = "./resources/hadoop_home"
 JDBC_JAR = "./resources/postgresql-42.2.8.jar"
-PYSPARK_PYTHON = "python3.7"
-PYSPARK_DRIVER_PYTHON = "python3.7"
+PYSPARK_PYTHON = "python3.6"
+PYSPARK_DRIVER_PYTHON = "python3.6"
 
 if(__name__== "__main__"):
     os.environ["HADOOP_HOME"] = HADOOP_HOME

@@ -28,19 +28,16 @@ def mark_days_before(t, it):
 # 7 days ('yes') or not ('no'). The marks substitute 'unscheduledoutofservice'.
 def add_response(t):
     t = list(t)
-    it = 0
-    for it in range(0, len(t)):
-        # if in a day there's an unsch. maint. event, mark all 7 days before it
-        # (if not marked already). No need to loop if at the end of the list
-        #print("comprobando", t[it])
-        if t[it][1] == 1 and it < (len(t)-1): mark_days_before(t, it)
-
+    for it in range(len(t)):
         # If the day is not visited (nothing appended), either it's the last
         # recorded day (we have no info) or there isn't an unsch. maint. event
         # in the next seven days. We do this after the first part because
         # we are replacing 'unscheduledoutofservice'.
         if len(t[it]) == 5: t[it].append("no")
-        it = it + 1
+
+        # if in a day there's an unsch. maint. event, mark all 7 days before it
+        # (if not marked already). No need to loop if at the end of the list
+        if t[it][1] == 1 and it < (len(t)-1): mark_days_before(t, it)
     return t
 
 def read_aircraft_util(sc):
@@ -71,7 +68,7 @@ def read_aircraft_util(sc):
                      # ungroup (com podem estalviar-nos el map seguent?)
                      .flatMapValues(lambda t: add_response(t))
                      # posar-ho bé: ((aircraftid, time), (FH, FC, DM, response))
-                     # t[1][1] (unscheduledoutofservice) if here for debugging !!!!!!!
+                     # t[1][1] (unscheduledoutofservice) is here for debugging !!!!!!!
                      .map(lambda t: ((t[0], t[1][0]), (t[1][2], t[1][3], t[1][4], t[1][1], t[1][5]))))
 
 
