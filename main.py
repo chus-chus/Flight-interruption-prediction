@@ -45,5 +45,6 @@ if(__name__== "__main__"):
             i = i+1
         # if x[1][4] == 'yes': nyes = nyes + 1
         # elif x[1][4] == 'no': no = no + 1
+    print(ACutil.count())
     print("yes:", nyes,"no:", no)
     # 19560 2085

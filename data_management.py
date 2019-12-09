@@ -17,7 +17,7 @@ DWpass = "DB200598"
 def date_format(str):
     # datetime.datetime.strptime("20"+str[4:6]+"-"+str[2:4]+"-"+str[0:2], '%Y-%m-%d').date()
     # print("20"+str[4:6]+"-"+str[2:4]+"-"+str[0:2])
-    return "20"+str[4:6]+"-"+str[2:4]+"-"+str[0:2]
+    return '-'.join(("20"+str[4:6],str[2:4],str[0:2]))
 
 def sensor_avg(path):
     data = pd.DataFrame()
@@ -34,7 +34,7 @@ def sensor_avg(path):
 
 attributes = ['aircraftid','dateid','sensorAVG']
 
-def attribute(row,attribute):
+def att(row,attribute):
     # Returns cell value given a row and an attribute: (row,col).
     for i, att in enumerate(attributes):
         if (attributes[i] == attribute):
@@ -45,7 +45,7 @@ def attribute(row,attribute):
 def mark_days_before(t, it):
     nextval = it + 1
     distance = (t[it][0] - t[nextval][0]).days
-    while distance <= 7:
+    while distance <= 6:
         if len(t[nextval]) == 5: t[nextval].append("yes")
         nextval = nextval + 1
         # cannot get past last element
@@ -84,12 +84,29 @@ def read_aircraft_util(sc):
                 .option("password", DWpass)
                 .load())
 
-    load = dw.select("aircraftid", "timeid", "flighthours",
+    amos = (session.read
+                .format("jdbc")
+                .option("driver","org.postgresql.Driver")
+                .option("url", "jdbc:postgresql://postgresfib.fib.upc.edu:6433/AMOS?sslmode=require")
+                .option("dbtable", "maintenanceevents")
+                .option("user", DWuser)
+                .option("password", DWpass)
+                .load())
+
+    # subsystem, starttime
+    # aircraftregistration
+
+    load_dw = dw.select("aircraftid", "timeid", "flighthours",
                      "unscheduledoutofservice", "flightcycles", "delayedminutes").rdd
+
+    load_amos = amos.select("aircraftregistration", "starttime", "subsystem").rdd
+
+    maintenance = (load_amos
+                   .map(lambda t: ((t[0], t[1].date()), t[2])))
 
     # For each flight, mark if there has been unscheduled maintenance sometime
     # in the next seven days.
-    ACutilization = (load
+    ACutilization = (load_dw
                      # select aircraftid, timeid, unscheduledoutofservice, FH, FC, DM
                      .map(lambda t: (t[0], [t[1], round(t[3]), round(float(t[2]), 2), int(t[4]), int(t[5])]))
                      # sort by timeid
@@ -101,14 +118,22 @@ def read_aircraft_util(sc):
                      .flatMapValues(lambda t: add_response(t))
                      # posar-ho bé: ((aircraftid, time), (FH, FC, DM, response))
                      # t[1][1] (unscheduledoutofservice) is here for debugging !!!!!!!
-                     .map(lambda t: ((t[0], t[1][0]), (t[1][2], t[1][3], t[1][4], t[1][1], t[1][5]))))
-
-
-    # return ACutilization
+                     .map(lambda t: ((t[0], t[1][0].strftime('%Y-%m-%d')), \
+                     (t[1][2], t[1][3], t[1][4], t[1][5]))))
 
     #####
     # Adding sensors data
     #####
+
+    df = (session.read
+        .format("com.databricks.spark.csv")
+        .option("header", "false")
+        .load(csv_path+"*.csv")).rdd ## <-- note the star (*)
+
+    df = (df
+          .map(lambda t: (t.split(';')[0], t.split(';')[2])))
+
+
 
     # OPTION #1:
     # idk how to map into (k, v) a spark dataframe!!
@@ -118,18 +143,16 @@ def read_aircraft_util(sc):
     #     .map(lambda t: (t[0], t[1]), t[2]))
 
     # OPTION #2:
-    sensor_avg(csv_path).to_csv(r'sensor.csv', index = False)
-
-    sensors = (sc.textFile('sensor.csv')
-        .cache()
-        .filter(lambda t: "aircraftid" not in t)
-        .map(lambda t: ((attribute(t,'aircraftid'), datetime.datetime.strptime(attribute(t,'dateid'), '%Y-%m-%d').date()), attribute(t,'sensorAVG'))))
-
-        # .map(lambda t: ((t[0], , t[2])))
-        # change the date type with isoformat does not work either WTF!!
-        # .map(lambda t: ((attribute(t,'aircraftid'), date.fromisoformat(attribute(t,'dateid'))), attribute(t,'sensorAVG'))))
-
-    join = ACutilization.join(sensors) # the join does not work because dateid's are not same type
+    # sensor_avg(csv_path).to_csv(r'sensor.csv', index = False)
+    #
+    # sensors = (sc.textFile('sensor.csv')
+    #            .cache()
+    #            .filter(lambda t: "aircraftid" not in t)
+    #            .map(lambda t: ((att(t,'aircraftid'), att(t,'dateid')), att(t,'sensorAVG'))))
+    #
+    # join = (ACutilization
+    #         .join(sensors)
+    #         .mapValues(lambda t: (t[0][0], t[0][1], t[0][2], t[1], t[0][3]))) # the join does not work because dateid's are not same type
 
     # return join
-    return join
+    return df
