@@ -31,8 +31,23 @@ def trainModel(matrix, sc):
     featureIndexer =\
         VectorIndexer(inputCol="features", outputCol="indexedFeatures", maxCategories=5).fit(data)
 
-    # Split the data into training and test sets (30% held out for testing)
-    (trainingData, testData) = data.randomSplit([0.6, 0.4])
+    # Split the data into training and test sets (40% held out for testing)
+    (trainingData, testData) = data.randomSplit([0.7, 0.3])
+
+    # Let us undersample the majority class
+
+    trainingrdd = trainingData.select('*').rdd
+
+    yesdata = trainingrdd.filter(lambda t: t[0] == 1.0)
+    nodata = trainingrdd.filter(lambda t: t[0] == 0.0)
+    print(nodata.count())
+    sampleRatio = float(yesdata.count()) / float(trainingrdd.count())
+    sampled_nodata = nodata.sample(False, sampleRatio)
+    trainingrdd = yesdata.union(sampled_nodata)
+
+    print(trainingrdd.count(), "yes: ", yesdata.count(), "no: ", sampled_nodata.count())
+
+    trainingData = trainingrdd.toDF()
 
     # Train a DecisionTree model.
     dt = DecisionTreeClassifier(labelCol="indexedLabel", featuresCol="indexedFeatures")
