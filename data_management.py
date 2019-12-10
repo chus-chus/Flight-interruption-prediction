@@ -49,38 +49,6 @@ def get_values(str):
     # Returns the sensor value of a sample.
     return float(str.split(';')[2])
 
-# Marks flights 7 days before an unsch. maint. event.
-def mark_days_before(t, it):
-    nextval = it + 1
-    distance = (t[it][0] - t[nextval][0]).days
-    while distance <= 6:
-        if len(t[nextval]) == 6: t[nextval].append("yes")
-        nextval = nextval + 1
-        # cannot get past last element
-        if nextval == len(t):
-            break
-        else:
-            distance = (t[it][0] - t[nextval][0]).days
-    return
-
-# Given a list of lists [date (descending), unscheduledoutofservice], marks, for each
-# day, if there is an unscheduled maintenance event in the next 7 days ('yes')
-# or not ('no'). The marks substitute 'unscheduledoutofservice'.
-def add_response(t):
-    t = list(t)
-    print(t)
-    for it in range(len(t)):
-        # If the day is not visited (nothing appended), either it's the last
-        # recorded day (we have no info) or there isn't an unsch. maint. event
-        # in the next seven days. We do this after the first part because
-        # we are replacing 'unscheduledoutofservice'.
-        if len(t[it]) == 6: t[it].append("no")
-
-        # if in a day there's an unsch. maint. event, mark all 7 days before it
-        # (if not marked already). No need to loop if at the end of the list
-        if t[it][1] == 1 and it < (len(t)-1): mark_days_before(t, it)
-    return t
-
 def create_priordays(pair):
     date = pair[0][1]
     priordays = []
