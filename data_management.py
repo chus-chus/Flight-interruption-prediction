@@ -6,12 +6,21 @@ from pyspark.sql import SQLContext
 from pyspark.sql import Row
 from pyspark.sql import SparkSession
 import numpy as np
-import datetime
+from datetime import datetime, timedelta
 
 csv_path = os.getcwd() + '/resources/trainingData/'
 
 DWuser = "jesus.maria.antonanzas"
 DWpass = "DB200598"
+
+attributes = ['aircraftid','dateid','sensorAVG']
+
+def att(row,attribute):
+    # Returns cell value given a row and an attribute: (row,col).
+    for i, att in enumerate(attributes):
+        if (attributes[i] == attribute):
+            return row.split(',')[i]
+    return None
 
 # converts to datetime.date format
 def date_format(str):
@@ -32,21 +41,20 @@ def sensor_avg(path):
                             'sensorAVG': avg}, ignore_index=True)
     return data
 
-attributes = ['aircraftid','dateid','sensorAVG']
+def right_key(str):
+    # Returns a KEY in ('aircraftid','dateid') format.
+    return (str[-10:-4], date_format(str[-30:-24]))
 
-def att(row,attribute):
-    # Returns cell value given a row and an attribute: (row,col).
-    for i, att in enumerate(attributes):
-        if (attributes[i] == attribute):
-            return row.split(',')[i]
-    return None
+def get_values(str):
+    # Returns the sensor value of a sample.
+    return float(str.split(';')[2])
 
 # Marks flights 7 days before an unsch. maint. event.
 def mark_days_before(t, it):
     nextval = it + 1
     distance = (t[it][0] - t[nextval][0]).days
     while distance <= 6:
-        if len(t[nextval]) == 5: t[nextval].append("yes")
+        if len(t[nextval]) == 6: t[nextval].append("yes")
         nextval = nextval + 1
         # cannot get past last element
         if nextval == len(t):
@@ -60,25 +68,28 @@ def mark_days_before(t, it):
 # or not ('no'). The marks substitute 'unscheduledoutofservice'.
 def add_response(t):
     t = list(t)
+    print(t)
     for it in range(len(t)):
         # If the day is not visited (nothing appended), either it's the last
         # recorded day (we have no info) or there isn't an unsch. maint. event
         # in the next seven days. We do this after the first part because
         # we are replacing 'unscheduledoutofservice'.
-        if len(t[it]) == 5: t[it].append("no")
+        if len(t[it]) == 6: t[it].append("no")
 
         # if in a day there's an unsch. maint. event, mark all 7 days before it
         # (if not marked already). No need to loop if at the end of the list
         if t[it][1] == 1 and it < (len(t)-1): mark_days_before(t, it)
     return t
 
-def right_key(str):
-    # Returns a KEY in ('aircraftid','dateid') format.
-    return (str[-10:-4], date_format(str[-30:-24]))
+def create_priordays(pair):
+    date = pair[0][1]
+    priordays = []
+    for i in range(1,7): priordays.append((date - timedelta(i),'yes'))
+    return tuple(priordays)
 
-def get_values(str):
-    # Returns the sensor value of a sample.
-    return float(str.split(';')[2])
+def response(value):
+    return "no" if value is None else "yes"
+
 
 def read_aircraft_util(sc):
     session = SparkSession(sc)
@@ -109,25 +120,30 @@ def read_aircraft_util(sc):
 
     load_amos = amos.select("aircraftregistration", "starttime", "subsystem").rdd
 
+    # we pick the right sensor from AMOS database
+    # falta filtre
     maintenance = (load_amos
-                   .map(lambda t: ((t[0], t[1].date()), t[2])))
+                   .map(lambda t: ((t[0], t[1].date()), t[2]))
+                   .filter(lambda t: t[1] == "3454")
+                   # generate 6 dates before each unshceduled maintenance.
+                   .map(lambda t: (t[0][0], create_priordays(t)))
+                   .flatMapValues(lambda t: t)
+                   .map(lambda t: ((t[0], t[1][0]), t[1][1]))
+                   # delete duplicates
+                   .reduceByKey(lambda t1,t2: t1))
+
+
 
     # For each flight, mark if there has been unscheduled maintenance sometime
     # in the next seven days.
     ACutilization = (load_dw
                      # select aircraftid, timeid, unscheduledoutofservice, FH, FC, DM
-                     .map(lambda t: (t[0], [t[1], round(t[3]), round(float(t[2]), 2), int(t[4]), int(t[5])]))
-                     # sort by timeid
-                     .sortBy(lambda t: t[1][0], ascending = False)
-                     # # get all flights of each aircraft
-                     .groupByKey()
-                     # # .map(lambda t: (t[0], add_response(t[1]))) no es necessari
-                     # # ungroup (com podem estalviar-nos el map seguent?)
-                     .flatMapValues(lambda t: add_response(t))
-                     # posar-ho bé: ((aircraftid, time), (FH, FC, DM, response))
-                     # t[1][1] (unscheduledoutofservice) is here for debugging !!!!!!!
-                     .map(lambda t: ((t[0], t[1][0].strftime('%Y-%m-%d')), \
-                     (t[1][2], t[1][3], t[1][4], t[1][5]))))
+                     .map(lambda t: ((t[0], t[1]), (round(t[3]), round(float(t[2]), 2), int(t[4]), int(t[5]))))
+                     # We join with the sensors.
+                     .leftOuterJoin(maintenance)
+                     # t[1][0][0] (unscheduledoutofservice) !!!!!!!
+                     .map(lambda t: ((t[0][0], t[0][1].strftime('%Y-%m-%d')), (t[1][0][1], t[1][0][2], t[1][0][3], response(t[1][1])))))
+
 
     #####
     # Adding sensors data
@@ -141,5 +157,4 @@ def read_aircraft_util(sc):
         .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
         .mapValues(lambda t: t[0]/t[1]))
 
-    # return join
-    return avg
+    return ACutilization
