@@ -40,11 +40,9 @@ if(__name__== "__main__"):
     nyes = 0
     no = 0
     for x in ACutil.collect():
-        if i < 100:
-            print(x)
-            i = i+1
-        if x[1][3] == 'yes': nyes = nyes + 1
-        elif x[1][3] == 'no': no = no + 1
+        print(x)
+        if x[1][4] == 'yes': nyes = nyes + 1
+        elif x[1][4] == 'no': no = no + 1
     print(ACutil.count())
     print("yes:", nyes,"no:", no)
     # 19560 2085

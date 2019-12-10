@@ -120,23 +120,21 @@ def read_aircraft_util(sc):
 
     load_amos = amos.select("aircraftregistration", "starttime", "subsystem").rdd
 
-    # we pick the right sensor from AMOS database
-    # falta filtre
+    # we pick the right sensor from AMOS database and generate artifical dates,
+    # which we use to add the response variable
     maintenance = (load_amos
                    .map(lambda t: ((t[0], t[1].date()), t[2]))
                    .filter(lambda t: t[1] == "3454")
-                   # generate 6 dates before each unshceduled maintenance.
+                   # generate 6 dates before each unshceduled maintenance. INCLOIM EL DIA QUE MIREM??????????
                    .map(lambda t: (t[0][0], create_priordays(t)))
                    .flatMapValues(lambda t: t)
                    .map(lambda t: ((t[0], t[1][0]), t[1][1]))
                    # delete duplicates
                    .reduceByKey(lambda t1,t2: t1))
 
-
-
     # For each flight, mark if there has been unscheduled maintenance sometime
     # in the next seven days.
-    ACutilization = (load_dw
+    ACuti_Mevents = (load_dw
                      # select aircraftid, timeid, unscheduledoutofservice, FH, FC, DM
                      .map(lambda t: ((t[0], t[1]), (round(t[3]), round(float(t[2]), 2), int(t[4]), int(t[5]))))
                      # We join with the sensors.
@@ -145,16 +143,16 @@ def read_aircraft_util(sc):
                      .map(lambda t: ((t[0][0], t[0][1].strftime('%Y-%m-%d')), (t[1][0][1], t[1][0][2], t[1][0][3], response(t[1][1])))))
 
 
-    #####
-    # Adding sensors data
-    #####
-
     # Get the average sensor values rdd: e.g. (('XY-SFN', '2014-12-04'), 60.624)
-    avg = (sc.wholeTextFiles(csv_path+"*.csv")
-        .flatMapValues(lambda t: t.split('\n'))
-        .filter(lambda t: 'date' not in t[1] and len(t[1]) != 0)
-        .map(lambda t: (right_key(t[0]), (get_values(t[1]), 1)))
-        .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
-        .mapValues(lambda t: t[0]/t[1]))
+    averages = (sc.wholeTextFiles(csv_path+"*.csv")
+                  .flatMapValues(lambda t: t.split('\n'))
+                  .filter(lambda t: 'date' not in t[1] and len(t[1]) != 0)
+                  .map(lambda t: (right_key(t[0]), (get_values(t[1]), 1)))
+                  .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
+                  .mapValues(lambda t: t[0]/t[1]))
 
-    return ACutilization
+    # final data matrix, ((aircraft, date), (FH, FC, DM, avg(sensor), response))
+    matrix = (ACuti_Mevents.join(averages)
+                           .mapValues(lambda t: (t[0][0], t[0][1], t[0][2], t[1], t[0][3])))
+
+    return matrix
