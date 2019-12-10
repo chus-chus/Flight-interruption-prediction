@@ -34,28 +34,21 @@ if(__name__== "__main__"):
 
     sc = pyspark.SparkContext.getOrCreate()
 
-    # read from 'DW' aircraft utilization metrics and create response variable
-    matrix = DMpipe.read_aircraft_util(sc)
+    def show(rdd, len=100000, i=4):
+        yes, no, k = 0, 0, 0
+        for row in rdd.collect():
+            if k < len: print(row); k += 1
+            if row[i] == 1: yes += 1
+            elif row[i] == 0: no += 1
+        print(f'RDD with {rdd.count()} rows. [yes: {yes}, no: {no}]')
 
-    i = 0
-    nyes = 0
-    no = 0
-    for x in matrix.collect():
-        print(x)
-        # if x[1][4] == 'yes': nyes = nyes + 1
-        # elif x[1][4] == 'no': no = no + 1
-    print(matrix.count())
-    print("yes:", nyes,"no:", no)
+    ####
+    # Pipelines
+    ####
+
+    # Read from 'DW' aircraft utilization metrics and create response variable.
+    matrix = DMpipe.read_aircraft_util(sc)
+    show(matrix, 5)
 
     # Train and validate model
-    # model = DApipe.trainModel(1, sc)
-
-    # i = 0
-    # nyes = 0
-    # no = 0
-    # for x in model.collect():
-    #     print(x)
-    #     #if x[1][4] == 'yes': nyes = nyes + 1
-    #     #elif x[1][4] == 'no': no = no + 1
-    # print(model.count())
-    # print("yes:", nyes,"no:", no)
+    model = DApipe.trainModel(1, sc)

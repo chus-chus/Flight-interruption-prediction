@@ -10,6 +10,7 @@ from pyspark.ml import Pipeline
 from pyspark.ml.classification import DecisionTreeClassifier
 from pyspark.ml.feature import StringIndexer, VectorIndexer
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+from pyspark.mllib.evaluation import MulticlassMetrics
 
 path = os.getcwd() + '/data_matrix/'
 
@@ -40,12 +41,12 @@ def trainModel(matrix, sc):
 
     yesdata = trainingrdd.filter(lambda t: t[0] == 1.0)
     nodata = trainingrdd.filter(lambda t: t[0] == 0.0)
-    print(nodata.count())
+
     sampleRatio = float(yesdata.count()) / float(trainingrdd.count())
     sampled_nodata = nodata.sample(False, sampleRatio)
     trainingrdd = yesdata.union(sampled_nodata)
 
-    # print(trainingrdd.count(), "yes: ", yesdata.count(), "no: ", sampled_nodata.count())
+    print(f'trainingRDD with {trainingrdd.count()} rows, [yes: {yesdata.count()}, no: {sampled_nodata.count()}]')
 
     trainingData = trainingrdd.toDF()
 
@@ -62,18 +63,25 @@ def trainModel(matrix, sc):
     predictions = model.transform(testData)
 
     # Select example rows to display.
-    predictions.select("prediction", "indexedLabel", "features").show(20)
+    predictions.select("prediction", "indexedLabel", "features").show(5)
 
     # Select (prediction, true label) and compute test error
     evaluator = MulticlassClassificationEvaluator(
-        labelCol="indexedLabel", predictionCol="prediction", metricName="weightedRecall")
+        labelCol="indexedLabel", predictionCol="prediction", metricName="accuracy")
 
-    recall = evaluator.evaluate(predictions)
-    print(recall)
-    #print("Test Error = %g " % (1.0 - accuracy))
+    # Instantiate metrics object
+    # metrics = MulticlassMetrics(predictions)
+
+    accuracy = evaluator.evaluate(predictions)
+    # recall = metrics.recall()
+    # precision = metrics.precision()
+    # f1Score = metrics.fMeasure()
+
+    print(f'  Accuracy: {accuracy}')
+    print(f'Test error: {1 - accuracy}')
+    # print(f'    Recall: {recall}')
+    # print(f' Precision: {precision}')
 
     treeModel = model.stages[2]
-    # summary only
-    print(treeModel)
 
     return treeModel

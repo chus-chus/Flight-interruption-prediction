@@ -50,7 +50,7 @@ def get_values(str):
     return float(str.split(';')[2])
 
 def createGenerator(date):
-    for i in range(6): yield (date - timedelta(i),1)
+    for i in range(6): yield (date - timedelta(i), 1)
 
 def create_priordays(pair):
     return createGenerator(pair[0][1])
