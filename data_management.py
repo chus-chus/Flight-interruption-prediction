@@ -52,11 +52,11 @@ def get_values(str):
 def create_priordays(pair):
     date = pair[0][1]
     priordays = []
-    for i in range(1,7): priordays.append((date - timedelta(i),'yes'))
+    for i in range(1,7): priordays.append((date - timedelta(i),1))
     return tuple(priordays)
 
 def response(value):
-    return "no" if value is None else "yes"
+    return 0 if value is None else 1
 
 
 def read_aircraft_util(sc):
@@ -119,8 +119,12 @@ def read_aircraft_util(sc):
                   .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
                   .mapValues(lambda t: t[0]/t[1]))
 
-    # final data matrix, ((aircraft, date), (FH, FC, DM, avg(sensor), response))
+    # final data matrix, ((FH, FC, DM, avg(sensor), response))
     matrix = (ACuti_Mevents.join(averages)
-                           .mapValues(lambda t: (t[0][0], t[0][1], t[0][2], t[1], t[0][3])))
+                           # remove key values as its better to convert to 'libsvm' format
+                           .map(lambda t: (t[1][0][0], t[1][0][1], t[1][0][2], t[1][1], t[1][0][3]))
+                           # ((aircraft, date), (FH, FC, DM, avg(sensor), response))
+                           # .mapValues(lambda t: (t[0][0], t[0][1], t[0][2], t[1], t[0][3]))
+                           .cache())
 
     return matrix
