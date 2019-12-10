@@ -72,6 +72,14 @@ def add_response(t):
         if t[it][1] == 1 and it < (len(t)-1): mark_days_before(t, it)
     return t
 
+def right_key(str):
+    # Returns a KEY in ('aircraftid','dateid') format.
+    return (str[-10:-4], date_format(str[-30:-24]))
+
+def get_values(str):
+    # Returns the sensor value of a sample.
+    return float(str.split(';')[2])
+
 def read_aircraft_util(sc):
     session = SparkSession(sc)
 
@@ -125,34 +133,13 @@ def read_aircraft_util(sc):
     # Adding sensors data
     #####
 
-    df = (session.read
-        .format("com.databricks.spark.csv")
-        .option("header", "false")
-        .load(csv_path+"*.csv")).rdd ## <-- note the star (*)
-
-    df = (df
-          .map(lambda t: (t.split(';')[0], t.split(';')[2])))
-
-
-
-    # OPTION #1:
-    # idk how to map into (k, v) a spark dataframe!!
-    # spDF = session.createDataFrame(sensor_avg(csv_path))
-    # spDF = (spDF.rdd
-    #     # .select('aircraftid','dateid','sensorAVG')
-    #     .map(lambda t: (t[0], t[1]), t[2]))
-
-    # OPTION #2:
-    # sensor_avg(csv_path).to_csv(r'sensor.csv', index = False)
-    #
-    # sensors = (sc.textFile('sensor.csv')
-    #            .cache()
-    #            .filter(lambda t: "aircraftid" not in t)
-    #            .map(lambda t: ((att(t,'aircraftid'), att(t,'dateid')), att(t,'sensorAVG'))))
-    #
-    # join = (ACutilization
-    #         .join(sensors)
-    #         .mapValues(lambda t: (t[0][0], t[0][1], t[0][2], t[1], t[0][3]))) # the join does not work because dateid's are not same type
+    # Get the average sensor values rdd: e.g. (('XY-SFN', '2014-12-04'), 60.624)
+    avg = (sc.wholeTextFiles(csv_path+"*.csv")
+        .flatMapValues(lambda t: t.split('\n'))
+        .filter(lambda t: 'date' not in t[1] and len(t[1]) != 0)
+        .map(lambda t: (right_key(t[0]), (get_values(t[1]), 1)))
+        .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
+        .mapValues(lambda t: t[0]/t[1]))
 
     # return join
-    return df
+    return avg
