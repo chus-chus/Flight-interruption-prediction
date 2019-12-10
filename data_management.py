@@ -49,11 +49,11 @@ def get_values(str):
     # Returns the sensor value of a sample.
     return float(str.split(';')[2])
 
+def createGenerator(date):
+    for i in range(6): yield (date - timedelta(i),1)
+
 def create_priordays(pair):
-    date = pair[0][1]
-    priordays = []
-    for i in range(1,7): priordays.append((date - timedelta(i),1))
-    return tuple(priordays)
+    return createGenerator(pair[0][1])
 
 def response(value):
     return 0 if value is None else 1

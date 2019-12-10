@@ -45,7 +45,7 @@ def trainModel(matrix, sc):
     sampled_nodata = nodata.sample(False, sampleRatio)
     trainingrdd = yesdata.union(sampled_nodata)
 
-    print(trainingrdd.count(), "yes: ", yesdata.count(), "no: ", sampled_nodata.count())
+    # print(trainingrdd.count(), "yes: ", yesdata.count(), "no: ", sampled_nodata.count())
 
     trainingData = trainingrdd.toDF()
 
