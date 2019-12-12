@@ -12,6 +12,7 @@ from pyspark.mllib.regression import LabeledPoint
 
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
+from pyspark.sql import DataFrameWriter
 from pyspark.sql import Row
 from pyspark.sql import SparkSession
 from datetime import datetime, timedelta
@@ -98,14 +99,8 @@ if __name__ == '__main__':
     # build the data matrix
     matrix = format_data_from_sources(sess, fromdate)
 
-    labeledpoints = matrix.map(lambda t: LabeledPoint(99, t[:3]))
-
     # convert matrix rdd into libsvm matrix, label is not existing so mark it as '99'
-    # labeledpointscheto = (matrix.map(lambda t: LabeledPoint(99, t[:3]))
-    #                 .map(lambda p: MLUtils._convert_labeled_point_to_libsvm(p)))
-
-    # for x in labeledpointscheto.collect():
-    #     print(x)
+    labeledpoints = matrix.map(lambda t: LabeledPoint(99, t[:3]))
 
     matrix_path = os.getcwd() + '/test_matrix/'
     model_path = os.getcwd() + '/model/'
@@ -115,22 +110,30 @@ if __name__ == '__main__':
 
     # Save matrix
     MLUtils.saveAsLibSVMFile(labeledpoints, matrix_path)
-
-    # Load the matrix. This can change in future versions
-    testdata = sess.read.format("libsvm").option("numFeatures", "3").load(matrix_path)
     print(f'Data matrix saved in {matrix_path}')
 
-    testdata = labeledpoints.toDF("indexedLabel", "indexedFeatures")
+    # Load the matrix. This can change in future versions so that there is no
+    # need to save and load it.
+    testdata = (sess.read.format("libsvm")
+                .option("numFeatures", "3")
+                .load(matrix_path)
+                .toDF("indexedLabel", "indexedFeatures"))
 
-    # for x in testdata.collect():
-    #     print(x)
-
-
-    # load model
+    # Load model.
     model = DecisionTreeClassificationModel.load(model_path)
 
     # Make predictions.
     predictions = model.transform(testdata)
 
     # Display results.
-    predictions.show()
+    predictions.select("prediction", "indexedFeatures").show()
+
+    # Let's now save results in a text file
+    results_path = os.getcwd() + '/prediction_results/'
+
+    # Remove previous results, if ones
+    shutil.rmtree(results_path, onerror = lambda f, path, exinfo: ())
+
+    # Save it. It contains ((FH, FC, DM), prediction). Prediction = 1: there
+    # will be an unscheduled maintenance event in the next 7 days.
+    predictions.rdd.map(lambda t: (t[1], t[4])).saveAsTextFile(results_path)
