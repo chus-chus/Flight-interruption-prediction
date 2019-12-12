@@ -120,8 +120,7 @@ def read_aircraft_util(sc):
 
 if __name__ == "__main__":
     # Python compatibility (just for Alex, sorry!)
-    if (len(sys.argv) == 2 and sys.argv[1] == 'a'):
-        PYSPARK_PYTHON = PYSPARK_DRIVER_PYTHON = "python3.7"
+    version = "python3.7" if (len(sys.argv) == 2 and sys.argv[1] == 'a') else "python3.6"
 
-    sc = config.config_env()
+    sc = config.config_env(version)
     read_aircraft_util(sc)
