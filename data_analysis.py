@@ -1,5 +1,7 @@
 import os
+import sys
 import pyspark
+import config
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
 from pyspark.sql import Row
@@ -12,11 +14,7 @@ from pyspark.mllib.evaluation import MulticlassMetrics
 
 path = os.getcwd() + '/data_matrix/'
 
-def trainModel(matrix, sc):
-    sess = SparkSession(sc)
-
-    data = sess.read.format("libsvm").option("numFeatures", "3").load(path)
-
+def trainModel(data, sc):
     # Index labels, adding metadata to the label column.
     # Fit on whole dataset to include all labels in index.
     labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(data)
@@ -79,3 +77,29 @@ def trainModel(matrix, sc):
     treeModel = model.stages[2]
 
     return treeModel
+
+
+if __name__ == "__main__":
+
+    # Python compatibility (just for Alex, sorry!)
+    version = "python3.7" if (len(sys.argv) == 2 and sys.argv[1] == 'a') else "python3.6"
+
+    sc = config.config_env(version)
+
+    sess = SparkSession(sc)
+
+    path_matrix = os.getcwd() + '/data_matrix/'
+    path_model = os.getcwd() + '/model/'
+
+    # load data matrix
+    matrix = sess.read.format("libsvm").option("numFeatures", "3").load(path_matrix)
+
+    # train the model
+    model = trainModel(matrix, sc)
+
+    # # remove previous matrix version, if one
+    # if '/model/' in path:
+    #     shutil.rmtree(path)
+
+    # save it
+    model.save(path_model)
