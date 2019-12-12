@@ -123,4 +123,5 @@ if __name__ == "__main__":
     version = "python3.7" if (len(sys.argv) == 2 and sys.argv[1] == 'a') else "python3.6"
 
     sc = config.config_env(version)
-    read_aircraft_util(sc)
+    mat = read_aircraft_util(sc)
+    print(mat.count())
