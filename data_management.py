@@ -135,11 +135,10 @@ if __name__ == "__main__":
     # convert matrix rdd into libsvm matrix
     labeledpoints = matrix.map(lambda t: LabeledPoint(t[4], t[:3]))
 
-    path = os.getcwd() + '/data_matrix/'
+    matrix_path = os.getcwd() + '/data_matrix/'
 
     # remove previous matrix version, if one
-    if '/data_matrix/' in path:
-        shutil.rmtree(path)
+    shutil.rmtree(matrix_path, onerror = lambda f, path, exinfo: ())
 
     # save matrix
-    MLUtils.saveAsLibSVMFile(labeledpoints, path)
+    MLUtils.saveAsLibSVMFile(labeledpoints, matrix_path)

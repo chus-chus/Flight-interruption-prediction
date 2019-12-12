@@ -2,6 +2,7 @@ import os
 import sys
 import pyspark
 import config
+import shutil
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
 from pyspark.sql import Row
@@ -11,8 +12,6 @@ from pyspark.ml.classification import DecisionTreeClassifier
 from pyspark.ml.feature import StringIndexer, VectorIndexer
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.mllib.evaluation import MulticlassMetrics
-
-path = os.getcwd() + '/data_matrix/'
 
 def trainModel(data, sc):
     # Index labels, adding metadata to the label column.
@@ -88,18 +87,17 @@ if __name__ == "__main__":
 
     sess = SparkSession(sc)
 
-    path_matrix = os.getcwd() + '/data_matrix/'
-    path_model = os.getcwd() + '/model/'
+    matrix_path = os.getcwd() + '/data_matrix/'
+    model_path = os.getcwd() + '/model/'
 
     # load data matrix
-    matrix = sess.read.format("libsvm").option("numFeatures", "3").load(path_matrix)
+    matrix = sess.read.format("libsvm").option("numFeatures", "3").load(matrix_path)
 
     # train the model
     model = trainModel(matrix, sc)
 
-    # # remove previous matrix version, if one
-    # if '/model/' in path:
-    #     shutil.rmtree(path)
+    # remove previous model version, if one
+    shutil.rmtree(model_path, onerror = lambda f, path, exinfo: ())
 
     # save it
-    model.save(path_model)
+    model.save(model_path)
