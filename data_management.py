@@ -5,12 +5,11 @@ import pyspark
 import numpy as np
 import config
 import shutil
+
 from pyspark.mllib.util import MLUtils
 from pyspark.mllib.regression import LabeledPoint
-
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
-from pyspark.sql import Row
 from pyspark.sql import SparkSession
 from datetime import datetime, timedelta
 

@@ -1,26 +1,16 @@
 import os
 import sys
-import pandas as pd
 import pyspark
-import numpy as np
 import config
 import shutil
 import argparse
 
 from pyspark.mllib.util import MLUtils
 from pyspark.mllib.regression import LabeledPoint
-
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
-from pyspark.sql import DataFrameWriter
-from pyspark.sql import Row
 from pyspark.sql import SparkSession
-from datetime import datetime, timedelta
-
-from pyspark.ml.classification import DecisionTreeClassifier, DecisionTreeClassificationModel
-from pyspark.ml.feature import StringIndexer, VectorIndexer
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-from pyspark.mllib.evaluation import MulticlassMetrics
+from pyspark.ml.classification import DecisionTreeClassificationModel
 
 csv_path = os.getcwd() + '/resources/trainingData/'
 

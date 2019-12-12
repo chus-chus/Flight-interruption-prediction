@@ -3,9 +3,9 @@ import sys
 import pyspark
 import config
 import shutil
+
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
-from pyspark.sql import Row
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline
 from pyspark.ml.classification import DecisionTreeClassifier
