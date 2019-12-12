@@ -4,6 +4,9 @@ import pandas as pd
 import pyspark
 import numpy as np
 import config
+import shutil
+from pyspark.mllib.util import MLUtils
+from pyspark.mllib.regression import LabeledPoint
 
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
@@ -118,10 +121,25 @@ def read_aircraft_util(sc):
 
     return matrix
 
+
 if __name__ == "__main__":
+
     # Python compatibility (just for Alex, sorry!)
     version = "python3.7" if (len(sys.argv) == 2 and sys.argv[1] == 'a') else "python3.6"
 
     sc = config.config_env(version)
-    mat = read_aircraft_util(sc)
-    print(mat.count())
+
+    # build the data matrix
+    matrix = read_aircraft_util(sc)
+
+    # convert matrix rdd into libsvm matrix
+    labeledpoints = matrix.map(lambda t: LabeledPoint(t[4], t[:3]))
+
+    path = os.getcwd() + '/data_matrix/'
+
+    # remove previous matrix version, if one
+    if '/data_matrix/' in path:
+        shutil.rmtree(path)
+
+    # save matrix
+    MLUtils.saveAsLibSVMFile(labeledpoints, path)

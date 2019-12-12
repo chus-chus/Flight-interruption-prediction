@@ -4,8 +4,6 @@ from pyspark.sql.types import *
 from pyspark.sql import SQLContext
 from pyspark.sql import Row
 from pyspark.sql import SparkSession
-from pyspark.mllib.util import MLUtils
-from pyspark.mllib.regression import LabeledPoint
 from pyspark.ml import Pipeline
 from pyspark.ml.classification import DecisionTreeClassifier
 from pyspark.ml.feature import StringIndexer, VectorIndexer
@@ -16,10 +14,6 @@ path = os.getcwd() + '/data_matrix/'
 
 def trainModel(matrix, sc):
     sess = SparkSession(sc)
-    # convert matrix rdd into libsvm matrix
-
-    # labeledpoints = matrix.map(lambda t: LabeledPoint(t[4], t[:3]))
-    # MLUtils.saveAsLibSVMFile(labeledpoints, path)
 
     data = sess.read.format("libsvm").option("numFeatures", "3").load(path)
 
