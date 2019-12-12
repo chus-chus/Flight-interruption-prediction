@@ -1,8 +1,10 @@
 import os
 import sys
 import pyspark
+
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
+
 
 import data_management as DMpipe
 import data_analysis as DApipe
@@ -48,7 +50,10 @@ if(__name__== "__main__"):
 
     # Read from 'DW' aircraft utilization metrics and create response variable.
     matrix = DMpipe.read_aircraft_util(sc)
-    show(matrix, 5)
+    show(matrix, i =4)
 
     # Train and validate model
     model = DApipe.trainModel(1, sc)
+
+
+# transformar les dades com amb la primera pipe, carregar el model entrenat i despres predir

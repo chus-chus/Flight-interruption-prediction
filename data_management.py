@@ -1,12 +1,16 @@
 import os
 import pandas as pd
 import pyspark
+import numpy as np
+import config
+
 from pyspark.sql.types import *
 from pyspark.sql import SQLContext
 from pyspark.sql import Row
 from pyspark.sql import SparkSession
-import numpy as np
 from datetime import datetime, timedelta
+
+sc = config.config_env()
 
 csv_path = os.getcwd() + '/resources/trainingData/'
 
@@ -24,22 +28,7 @@ def att(row,attribute):
 
 # converts to datetime.date format
 def date_format(str):
-    # datetime.datetime.strptime("20"+str[4:6]+"-"+str[2:4]+"-"+str[0:2], '%Y-%m-%d').date()
-    # print("20"+str[4:6]+"-"+str[2:4]+"-"+str[0:2])
     return '-'.join(("20"+str[4:6],str[2:4],str[0:2]))
-
-def sensor_avg(path):
-    data = pd.DataFrame()
-    for file in os.listdir(path):
-        df = pd.read_csv(path + file, sep = ';')
-        aircraftid = file[-10:-4]
-        timeid = date_format(file)
-        avg = sum(df['value']) / len(df)
-        # data = data.append({0: aircraftid, 1: timeid,
-        #                     2: avg}, ignore_index=True)
-        data = data.append({'aircraftid': aircraftid,'dateid': timeid,
-                            'sensorAVG': avg}, ignore_index=True)
-    return data
 
 def right_key(str):
     # Returns a KEY in ('aircraftid','dateid') format.
@@ -50,16 +39,17 @@ def get_values(str):
     return float(str.split(';')[2])
 
 def createGenerator(date):
-    for i in range(6): yield (date - timedelta(i), 1)
+    for i in range(7): yield (date - timedelta(i), 1)
 
-def create_priordays(pair):
-    return createGenerator(pair[0][1])
+def create_priordays(date):
+    return createGenerator(date)
 
 def response(value):
     return 0 if value is None else 1
 
 
 def read_aircraft_util(sc):
+
     session = SparkSession(sc)
 
     dw = (session.read
@@ -86,16 +76,16 @@ def read_aircraft_util(sc):
     load_dw = dw.select("aircraftid", "timeid", "flighthours",
                      "unscheduledoutofservice", "flightcycles", "delayedminutes").rdd
 
-    load_amos = amos.select("aircraftregistration", "starttime", "subsystem").rdd
+    load_amos = (amos.select("aircraftregistration", "starttime", "subsystem")
+                     .where("subsystem = '3453' and (kind = 'Delay' or kind = 'AircraftOnGround' or kind == 'Safety')").rdd)
 
     # we pick the right sensor from AMOS database and generate artifical dates,
     # which we use to add the response variable
     maintenance = (load_amos
-                   .map(lambda t: ((t[0], t[1].date()), t[2]))
-                   .filter(lambda t: t[1] == "3454")
+                   .map(lambda t: (t[0], create_priordays(t[1].date())))
                    # generate 6 dates before each unshceduled maintenance. INCLOIM EL DIA QUE MIREM??????????
-                   .map(lambda t: (t[0][0], create_priordays(t)))
                    .flatMapValues(lambda t: t)
+                   # aircraftid, date, response
                    .map(lambda t: ((t[0], t[1][0]), t[1][1]))
                    # delete duplicates
                    .reduceByKey(lambda t1,t2: t1))
@@ -128,3 +118,5 @@ def read_aircraft_util(sc):
                            .cache())
 
     return matrix
+
+read_aircraft_util(sc)
