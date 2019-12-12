@@ -23,7 +23,7 @@ def trainModel(data, sc):
     featureIndexer =\
         VectorIndexer(inputCol="features", outputCol="indexedFeatures", maxCategories=5).fit(data)
 
-    # Split the data into training and test sets (40% held out for testing)
+    # Split the data into training and test sets (30% held out for testing)
     (trainingData, testData) = data.randomSplit([0.7, 0.3])
 
     # Let us undersample the majority class
@@ -33,11 +33,12 @@ def trainModel(data, sc):
     yesdata = trainingrdd.filter(lambda t: t[0] == 1.0)
     nodata = trainingrdd.filter(lambda t: t[0] == 0.0)
 
-    sampleRatio = float(yesdata.count()) / float(trainingrdd.count())
+    # We sample a bit more 0's than 1's
+    sampleRatio = (float(yesdata.count())/float(trainingrdd.count()))*1.6
     sampled_nodata = nodata.sample(False, sampleRatio)
     trainingrdd = yesdata.union(sampled_nodata)
 
-    print(f'trainingRDD with {trainingrdd.count()} rows, [yes: {yesdata.count()}, no: {sampled_nodata.count()}]')
+    print(f'\n trainingRDD with {trainingrdd.count()} rows, [yes: {yesdata.count()}, no: {sampled_nodata.count()}]')
 
     trainingData = trainingrdd.toDF()
 
@@ -56,22 +57,17 @@ def trainModel(data, sc):
     # Select example rows to display.
     predictions.select("prediction", "indexedLabel", "features").show(5)
 
-    # Select (prediction, true label) and compute test error
-    evaluator = MulticlassClassificationEvaluator(
+    # Create performance matrix
+    accuracy = MulticlassClassificationEvaluator(
         labelCol="indexedLabel", predictionCol="prediction", metricName="accuracy")
 
-    # Instantiate metrics object
-    # metrics = MulticlassMetrics(predictions)
+    recall = MulticlassClassificationEvaluator(
+        labelCol="indexedLabel", predictionCol="prediction", metricName="weightedRecall")
 
-    accuracy = evaluator.evaluate(predictions)
-    # recall = metrics.recall()
-    # precision = metrics.precision()
-    # f1Score = metrics.fMeasure()
-
-    print(f'  Accuracy: {accuracy}')
-    print(f'Test error: {1 - accuracy}')
-    # print(f'    Recall: {recall}')
-    # print(f' Precision: {precision}')
+    acc = accuracy.evaluate(predictions)
+    print(f'  Accuracy: {acc}')
+    print(f'Test error: {1 - acc}')
+    print(f'    Recall: {recall.evaluate(predictions)}')
 
     treeModel = model.stages[2]
 
@@ -101,3 +97,5 @@ if __name__ == "__main__":
 
     # save it
     model.save(model_path)
+
+    print(f'Model saved in {model_path}')

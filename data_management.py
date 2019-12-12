@@ -142,3 +142,5 @@ if __name__ == "__main__":
 
     # save matrix
     MLUtils.saveAsLibSVMFile(labeledpoints, matrix_path)
+
+    print(f'Data matrix saved in {matrix_path}')
