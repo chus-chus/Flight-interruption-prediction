@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 import pyspark
 import numpy as np
@@ -9,8 +10,6 @@ from pyspark.sql import SQLContext
 from pyspark.sql import Row
 from pyspark.sql import SparkSession
 from datetime import datetime, timedelta
-
-sc = config.config_env()
 
 csv_path = os.getcwd() + '/resources/trainingData/'
 
@@ -119,4 +118,10 @@ def read_aircraft_util(sc):
 
     return matrix
 
-read_aircraft_util(sc)
+if __name__ == "__main__":
+    # Python compatibility (just for Alex, sorry!)
+    if (len(sys.argv) == 2 and sys.argv[1] == 'a'):
+        PYSPARK_PYTHON = PYSPARK_DRIVER_PYTHON = "python3.7"
+
+    sc = config.config_env()
+    read_aircraft_util(sc)

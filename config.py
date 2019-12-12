@@ -9,13 +9,6 @@ JDBC_JAR = "./resources/postgresql-42.2.8.jar"
 PYSPARK_PYTHON = "python3.6"
 PYSPARK_DRIVER_PYTHON = "python3.6"
 
-
-if __name__ == "__main__":
-
-    # Python compatibility (just for Alex, sorry!)
-    if (len(sys.argv) == 2 and sys.argv[1] == 'a'):
-        PYSPARK_PYTHON = PYSPARK_DRIVER_PYTHON = "python3.7"
-
 def config_env():
 
     os.environ["HADOOP_HOME"] = HADOOP_HOME
