@@ -19,15 +19,6 @@ csv_path = os.getcwd() + '/resources/trainingData/'
 DWuser = "jesus.maria.antonanzas"
 DWpass = "DB200598"
 
-attributes = ['aircraftid','dateid','sensorAVG']
-
-def att(row,attribute):
-    # Returns cell value given a row and an attribute: (row,col).
-    for i, att in enumerate(attributes):
-        if (attributes[i] == attribute):
-            return row.split(',')[i]
-    return None
-
 # converts to datetime.date format
 def date_format(str):
     return '-'.join(("20"+str[4:6],str[2:4],str[0:2]))
@@ -122,10 +113,10 @@ def read_aircraft_util(sc):
     return matrix
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     # Python compatibility (just for Alex, sorry!)
-    version = "python3.7" if (len(sys.argv) == 2 and sys.argv[1] == 'a') else "python3.6"
+    version = 'python3.7' if (len(sys.argv) == 2 and sys.argv[1] == 'a') else 'python3.6'
 
     sc = config.config_env(version)
 

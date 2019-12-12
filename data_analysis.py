@@ -34,7 +34,7 @@ def trainModel(data, sc):
     nodata = trainingrdd.filter(lambda t: t[0] == 0.0)
 
     # We sample a bit more 0's than 1's
-    sampleRatio = (float(yesdata.count())/float(trainingrdd.count()))*1.6
+    sampleRatio = (float(yesdata.count())/float(trainingrdd.count()))*1.7
     sampled_nodata = nodata.sample(False, sampleRatio)
     trainingrdd = yesdata.union(sampled_nodata)
 
@@ -50,6 +50,8 @@ def trainModel(data, sc):
 
     # Train model.  This also runs the indexers.
     model = pipeline.fit(trainingData)
+
+    print("Model trained")
 
     # Make predictions.
     predictions = model.transform(testData)
