@@ -61,11 +61,9 @@ def format_data_from_sources(session, fromdate):
                   .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
                   .mapValues(lambda t: t[0]/t[1]))
 
-    # final data matrix, ((FH, FC, DM, avg(sensor), response))
+    # Extracted data matrix, (FH, FC, DM, avg(sensor)), (aircraftid, date)
     matrix = (flights.join(averages)
-                      # remove key values as its better to convert to 'libsvm' format
-                      # ((aircraft, date), (FH, FC, DM, avg(sensor)))
-                      .map(lambda t: (t[1][0][0], t[1][0][1], t[1][0][2], t[1][1]))
+                      .map(lambda t: ((t[0]),(t[1][0][0], t[1][0][1], t[1][0][2], t[1][1])))
                       .cache())
 
     return matrix
@@ -75,7 +73,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', default= 3.6, help='Python compatibility (just for Alex, sorry!)', type = float)
     parser.add_argument('--fromdate', default= '2010-01-01', help='Pick flights from this date onwards: YYYY/MM/DD', type = str)
-
+    # returns a few observations: 2016-09-07
     args = parser.parse_args()
 
     version = args.version
@@ -90,7 +88,7 @@ if __name__ == '__main__':
     matrix = format_data_from_sources(sess, fromdate)
 
     # convert matrix rdd into libsvm matrix, label is not existing so mark it as '99'
-    labeledpoints = matrix.map(lambda t: LabeledPoint(99, t[:3]))
+    labeledpoints = matrix.map(lambda t: LabeledPoint(99, t[1][:3]))
 
     matrix_path = os.getcwd() + '/test_matrix/'
     model_path = os.getcwd() + '/model/'
@@ -115,15 +113,19 @@ if __name__ == '__main__':
     # Make predictions.
     predictions = model.transform(testdata)
 
-    # Display results.
-    predictions.select("prediction", "indexedFeatures").show()
-
     # Let's now save results in a text file
     results_path = os.getcwd() + '/prediction_results/'
 
     # Remove previous results, if ones
     shutil.rmtree(results_path, onerror = lambda f, path, exinfo: ())
 
-    # Save it. It contains ((FH, FC, DM), prediction). Prediction = 1: there
+    # Display results. For larger dataframes please pipe the output to a textfile.
+    print('Prediction complete for the following observations:')
+    for x in matrix.collect():
+        print(f'Aircraft {x[0][0]} on date {x[0][1]}')
+    print('\n With the following results:')
+    predictions.select("prediction", "indexedFeatures").show()
+
+    # Save predictions. It contains ((FH, FC, DM), prediction). Prediction = 1: there
     # will be an unscheduled maintenance event in the next 7 days.
-    predictions.rdd.map(lambda t: (t[1], t[4])).saveAsTextFile(results_path)
+    predictions.rdd.map(lambda t: ((t[4]),(t[1]))).saveAsTextFile(results_path)
