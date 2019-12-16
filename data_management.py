@@ -6,18 +6,35 @@ Data management pipe script
 @info: BDA, GCED, Big Data Analytics project
 @date: 16/12/2019
 
+Usage
+-----------
+If reading sensor data from HDFS, this script is to be executed 2nd, after "load_into_hdfs.py".
+In the arguments, one should specify if using Python version 3.6 or 3.7, if loading sensor data
+from local or HDFS and if the first case is true, the csv's path
+(specify if not in /resources/trainingData/). See arguments help for more details.
+The results from this script is a file "data_matrix" containing a 'libsvm'
+set of files representing the data matrix to feed into the model.
+
 Description
 -----------
+Extracts necesary data from sources (sensor data -locally or HDFS- and aircraft
+utilization), creates the response variable to train the model with and saves
+the data matrix locally.
 
-
-Steps
+Steps enforced
 -----------
-1- 
+1- Configure Spark environment
+2- Read and process (that is, create response variable) aircraft utilization
+   information data from relational databases
+3- Read sensor data from local (in this case compute averages for each aircraft and date)
+   or HDFS (in this case averages are already processed) and format
+4- Enrich aircraft utilization information with sensor data (join observations)
+5- Transform resulting data set into 'libsvm' format for training the model
+   and save it locally
 """
 import os
 import sys
 import pyspark
-import numpy as np
 import config
 import shutil
 import argparse
@@ -25,25 +42,26 @@ import argparse
 from pyspark.mllib.util import MLUtils
 from pyspark.mllib.regression import LabeledPoint
 from pyspark.sql.types import *
-from pyspark.sql import SQLContext
 from pyspark.sql import SparkSession
 from datetime import datetime, timedelta
 
 DWuser = "jesus.maria.antonanzas"
 DWpass = "DB200598"
 
-# converts to datetime.date format
+# Converts a string like "yy-dd-mm" to format "yyyy-mm-dd". Refer to step 3
 def date_format(str):
     return '-'.join(("20"+str[4:6],str[2:4],str[0:2]))
 
+# Returns a key in format ('aircraftid','dateid') from /resources/csvs filenames
+# Refer to step 3
 def right_key(str):
-    # Returns a KEY in ('aircraftid','dateid') format.
     return (str[-10:-4], date_format(str[-30:-24]))
 
+# Gets the sensor value of an observations in the sensor data csv's. Refer to step 3
 def get_values(str):
-    # Returns the sensor value of a sample.
     return float(str.split(';')[2])
 
+# 
 def createGenerator(date):
     for i in range(7): yield (date - timedelta(i), 1)
 
@@ -53,19 +71,18 @@ def create_priordays(date):
 def response(value):
     return 0 if value is None else 1
 
-
 def format_data_from_sources(sc):
 
     session = SparkSession(sc)
 
     dw = (session.read
-                .format("jdbc")
-                .option("driver","org.postgresql.Driver")
-                .option("url", "jdbc:postgresql://postgresfib.fib.upc.edu:6433/DW?sslmode=require")
-                .option("dbtable", "aircraftutilization")
-                .option("user", DWuser)
-                .option("password", DWpass)
-                .load())
+                 .format("jdbc")
+                 .option("driver","org.postgresql.Driver")
+                 .option("url", "jdbc:postgresql://postgresfib.fib.upc.edu:6433/DW?sslmode=require")
+                 .option("dbtable", "aircraftutilization")
+                 .option("user", DWuser)
+                 .option("password", DWpass)
+                 .load())
 
     amos = (session.read
                 .format("jdbc")
@@ -110,9 +127,9 @@ def format_data_from_sources(sc):
 
 
 def data_from_csvs(sc, sess, loadfrom, csv_path):
-
-    # Get csvs from hdfs, remember to deploy avro dependencies "org.apache.spark:spark-avro_2.11:2.4.3"
-    # for this option previous execution of "load_into_hdfs.py" is required.
+    # Get csvs from hdfs, remember to deploy avro dependencies
+    # "org.apache.spark:spark-avro_2.11:2.4.3".
+    # For this option previous execution of "load_into_hdfs.py" is required.
     if loadfrom == "hdfs":
         averages = (sess.read.format("avro")
                               .load('hdfs://localhost:9000/user/chusantonanzas/sensordata')
@@ -130,9 +147,8 @@ def data_from_csvs(sc, sess, loadfrom, csv_path):
 
     return averages
 
+# Returns the sensor value of a sample.
 def join_csvs_dwinfo(sc, averages, ACuti_Mevents):
-
-    # final data matrix, ((FH, FC, DM, avg(sensor), response))
     matrix = (ACuti_Mevents.join(averages)
                            # remove key values as its better to convert to 'libsvm' format
                            .map(lambda t: (t[1][0][0], t[1][0][1], t[1][0][2], t[1][1], t[1][0][3]))
@@ -144,9 +160,12 @@ def join_csvs_dwinfo(sc, averages, ACuti_Mevents):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', default= 3.6, help='Python compatibility (just for Alex, sorry!)', type = float)
-    parser.add_argument('--loadfrom', default= 'local', help='Sensor data (csv) load method: "hdfs", "local".', type = str)
-    parser.add_argument('--csvpath', default= os.getcwd() + '/resources/trainingData/', help='CSV path for "local" option', type = str)
+    parser.add_argument('--version', default= 3.6, \
+                        help='Python compatibility (just for Alex, sorry!)', type = float)
+    parser.add_argument('--loadfrom', default= 'local', \
+                        help='Sensor data (csv) load method: "hdfs", "local".', type = str)
+    parser.add_argument('--csvpath', default= os.getcwd() + '/resources/trainingData/', \
+                        help='CSV path for "local" option', type = str)
 
     args = parser.parse_args()
 

@@ -6,14 +6,19 @@ Optional HDFS loading script
 @info: BDA, GCED, Big Data Analytics project
 @date: 16/12/2019
 
-Description
+Usage
 -----------
-Load and process sensor data from CSVs and load them in HDFS.
-It is required to deploy avro dependencies for Spark versions >= 2.4:
+This file should be executed first, before any pipes.
+It is required to deploy avro dependencies for Spark versions >= 2.4 before
+executing this script:
 
 "org.apache.spark:spark-avro_2.11:2.4.3"
 
-Steps
+Description
+-----------
+Load and process sensor data from CSVs and load them in HDFS.
+
+Steps enforced
 -----------
 1- Configure Spark environment
 2- Read CSVs, and compute sensor averages for date and aircraftid
