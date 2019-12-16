@@ -1,3 +1,18 @@
+"""
+(new) data classification pipe
+@author: Jesus Antonanzas Acero, Alex Carrillo Alza
+@version: "1.0"
+@email: "jesus.maria.antonanzas@est.fib.upc.edu, alex.carrillo.alza@est.fib.upc.edu"
+@info: BDA, GCED, Big Data Analytics project
+@date: 16/12/2019
+
+Description
+-----------
+
+Steps
+-----------
+1-
+"""
 import os
 import sys
 import pyspark
@@ -55,16 +70,16 @@ def format_data_from_sources(sc, sess):
 
 def data_from_csvs(sc, sess, loadfrom, csv_path):
 
-    # Get csvs from hdfs, remember to deploy avro dependencies for Spark Version > 2.4
+    # Get sensordata from hdfs, remember to deploy avro dependencies for Spark Version > 2.4
     # "org.apache.spark:spark-avro_2.11:2.4.3"
     # for this option previous execution of "load_into_hdfs.py" is required.
     if loadfrom == "hdfs":
         averages = (sess.read.format("avro")
-                              .load('hdfs://localhost:9000/user/chusantonanzas/sensordata')
-                              .rdd
-                              .map(lambda t: ((t[0][0], t[0][1]), t[1])))
+                             .load('hdfs://localhost:9000/user/chusantonanzas/sensordata')
+                             .rdd
+                             .map(lambda t: ((t[0][0], t[0][1]), t[1])))
 
-    # read and process csvs from local
+    # read and process csv's sensordata from local
     elif loadfrom == "local":
         averages = (sc.wholeTextFiles(csv_path+"*.csv")
                       .flatMapValues(lambda t: t.split('\n'))

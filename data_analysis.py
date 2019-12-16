@@ -1,3 +1,19 @@
+"""
+Data analysis pipe
+@author: Jesus Antonanzas Acero, Alex Carrillo Alza
+@version: "1.0"
+@email: "jesus.maria.antonanzas@est.fib.upc.edu, alex.carrillo.alza@est.fib.upc.edu"
+@info: BDA, GCED, Big Data Analytics project
+@date: 16/12/2019
+
+Description
+-----------
+
+
+Steps
+-----------
+1-
+"""
 import os
 import sys
 import pyspark
