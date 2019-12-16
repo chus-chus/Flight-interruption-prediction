@@ -29,16 +29,16 @@ def get_values(str):
     # Returns the sensor value of a sample.
     return float(str.split(';')[2])
 
-def format_data_from_sources(session, fromdate):
+def format_data_from_sources(sc, sess):
 
-    dw = (session.read
-                .format("jdbc")
-                .option("driver","org.postgresql.Driver")
-                .option("url", "jdbc:postgresql://postgresfib.fib.upc.edu:6433/DW?sslmode=require")
-                .option("dbtable", "aircraftutilization")
-                .option("user", DWuser)
-                .option("password", DWpass)
-                .load())
+    dw = (sess.read
+              .format("jdbc")
+              .option("driver","org.postgresql.Driver")
+              .option("url", "jdbc:postgresql://postgresfib.fib.upc.edu:6433/DW?sslmode=require")
+              .option("dbtable", "aircraftutilization")
+              .option("user", DWuser)
+              .option("password", DWpass)
+              .load())
 
     # subsystem, starttime
     # aircraftregistration
@@ -47,45 +47,70 @@ def format_data_from_sources(session, fromdate):
                      "unscheduledoutofservice", "flightcycles", "delayedminutes")
                  .where("timeid >= '"+fromdate+"'")).rdd
 
-    # For each flight, mark if there has been unscheduled maintenance sometime
-    # in the next seven days.
-    flights = (load_dw
-             # select aircraftid, timeid, FH, FC, DM
-               .map(lambda t: ((t[0], t[1].strftime('%Y-%m-%d')), (round(float(t[2]), 2), int(t[4]), int(t[5])))))
+    # select aircraftid, timeid, FH, FC, DM
+    flights = (load_dw.map(lambda t: ((t[0], t[1].strftime('%Y-%m-%d')), (round(float(t[2]), 2), int(t[4]), int(t[5])))))
 
-    # Get the average sensor values rdd: e.g. (('XY-SFN', '2014-12-04'), 60.624)
-    averages = (sc.wholeTextFiles(csv_path+"*.csv")
-                  .flatMapValues(lambda t: t.split('\n'))
-                  .filter(lambda t: 'date' not in t[1] and len(t[1]) != 0)
-                  .map(lambda t: (right_key(t[0]), (get_values(t[1]), 1)))
-                  .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
-                  .mapValues(lambda t: t[0]/t[1]))
+    return flights
 
-    # Extracted data matrix, (FH, FC, DM, avg(sensor)), (aircraftid, date)
+
+def data_from_csvs(sc, sess, loadfrom, csv_path):
+
+    # Get csvs from hdfs, remember to deploy avro dependencies for Spark Version > 2.4
+    # "org.apache.spark:spark-avro_2.11:2.4.3"
+    # for this option previous execution of "load_into_hdfs.py" is required.
+    if loadfrom == "hdfs":
+        averages = (sess.read.format("avro")
+                              .load('hdfs://localhost:9000/user/chusantonanzas/sensordata')
+                              .rdd
+                              .map(lambda t: ((t[0][0], t[0][1]), t[1])))
+
+    # read and process csvs from local
+    elif loadfrom == "local":
+        averages = (sc.wholeTextFiles(csv_path+"*.csv")
+                      .flatMapValues(lambda t: t.split('\n'))
+                      .filter(lambda t: 'date' not in t[1] and len(t[1]) != 0)
+                      .map(lambda t: (right_key(t[0]), (get_values(t[1]), 1)))
+                      .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
+                      .mapValues(lambda t: t[0]/t[1]))
+
+    return averages
+
+# Final data matrix, (FH, FC, DM, avg(sensor)), (aircraftid, date)
+def join_csvs_dwinfo(sc, averages, flights):
     matrix = (flights.join(averages)
-                      .map(lambda t: ((t[0]),(t[1][0][0], t[1][0][1], t[1][0][2], t[1][1])))
-                      .cache())
-
+                     .map(lambda t: ((t[0]),(t[1][0][0], t[1][0][1], t[1][0][2], t[1][1])))
+                     .cache())
     return matrix
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', default= 3.6, help='Python compatibility (just for Alex, sorry!)', type = float)
-    parser.add_argument('--fromdate', default= '2010-01-01', help='Pick flights from this date onwards: YYYY/MM/DD', type = str)
+    parser.add_argument('--fromdate', default= '2016-09-07', help='Pick flights from this date onwards: YYYY/MM/DD', type = str)
+    parser.add_argument('--loadfrom', default= 'local', help='Sensor data (csv) load method: "hdfs", "local".', type = str)
+    parser.add_argument('--csvpath', default= os.getcwd() + '/resources/trainingData/', help='CSV path for "local" option', type = str)
     # returns a few observations: 2016-09-07
+
     args = parser.parse_args()
 
+    loadfrom = args.loadfrom
+    csv_path = args.csvpath
     version = args.version
     fromdate = args.fromdate
 
-    version = 'python3.7' if (version == 3.7) else 'python3.6'
+    version = "python3.6" if version == 3.6 else "python3.7"
 
     sc = config.config_env(version)
     sess = SparkSession(sc)
 
-    # build the data matrix
-    matrix = format_data_from_sources(sess, fromdate)
+    # read from amos and acuti necessary metrics
+    flights = format_data_from_sources(sc, sess)
+
+    # read sensors info from hdfs
+    averages = data_from_csvs(sc, sess, loadfrom, csv_path)
+
+    # create final data matrix
+    matrix = join_csvs_dwinfo(sc, averages, flights)
 
     # convert matrix rdd into libsvm matrix, label is not existing so mark it as '99'
     labeledpoints = matrix.map(lambda t: LabeledPoint(99, t[1][:3]))
@@ -124,7 +149,7 @@ if __name__ == '__main__':
     for x in matrix.collect():
         print(f'Aircraft {x[0][0]} on date {x[0][1]}')
     print('\n With the following results:')
-    predictions.select("prediction", "indexedFeatures").show()
+    predictions.select("prediction", "indexedFeatures").show(predictions.count(), False)
 
     # Save predictions. It contains ((FH, FC, DM), prediction). Prediction = 1: there
     # will be an unscheduled maintenance event in the next 7 days.

@@ -2,6 +2,7 @@ import os
 import sys
 import pyspark
 import config
+import argparse
 import shutil
 
 from pyspark.sql.types import *
@@ -33,7 +34,11 @@ def trainModel(data, sc):
     yesdata = trainingrdd.filter(lambda t: t[0] == 1.0)
     nodata = trainingrdd.filter(lambda t: t[0] == 0.0)
 
-    # We sample a bit more 0's than 1's
+    # We sample a bit more 0's than 1's. Note that because the explanatory variables
+    # we are using do not explain much of the response the error when
+    # performing undersampling 50/50 is very high: close to 50%. If we increase the
+    # number of "no" in the training data, though, error will be low, but at
+    # the cost of not predicting "yes" at all (very low recall).
     sampleRatio = (float(yesdata.count())/float(trainingrdd.count()))*1.7
     sampled_nodata = nodata.sample(False, sampleRatio)
     trainingrdd = yesdata.union(sampled_nodata)
@@ -77,6 +82,12 @@ def trainModel(data, sc):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--version', default= 3.6, help='Python compatibility (just for Alex, sorry!)', type = float)
+
+    args = parser.parse_args()
+
+    version = args.version
 
     # Python compatibility (just for Alex, sorry!)
     version = "python3.7" if (len(sys.argv) == 2 and sys.argv[1] == 'a') else "python3.6"
