@@ -6,10 +6,13 @@
 @info: BDA, GCED, Big Data Analytics project
 @date: 16/12/2019
 
+Usage
+-----------
+
 Description
 -----------
 
-Steps
+Steps enforced
 -----------
 1-
 """

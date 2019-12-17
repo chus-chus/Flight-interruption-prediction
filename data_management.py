@@ -27,9 +27,10 @@ Steps enforced
 2- Read and process (that is, create response variable) aircraft utilization
    information data from relational databases
 3- Read sensor data from local (in this case compute averages for each aircraft and date)
-   or HDFS (in this case averages are already processed) and format
-4- Enrich aircraft utilization information with sensor data (join observations)
-5- Transform resulting data set into 'libsvm' format for training the model
+   or HDFS (in this case averages are already processed) and format it correctly
+4- Generate response variable
+5- Enrich aircraft utilization information with sensor data (join observations)
+6- Transform resulting data set into 'libsvm' format for training the model
    and save it locally
 """
 import os
@@ -48,33 +49,40 @@ from datetime import datetime, timedelta
 DWuser = "jesus.maria.antonanzas"
 DWpass = "DB200598"
 
-# Converts a string like "yy-dd-mm" to format "yyyy-mm-dd". Refer to step 3
+# Converts a string like "yy-dd-mm" to format "yyyy-mm-dd". Refer to step 3.
 def date_format(str):
     return '-'.join(("20"+str[4:6],str[2:4],str[0:2]))
 
 # Returns a key in format ('aircraftid','dateid') from /resources/csvs filenames
-# Refer to step 3
+# Refer to step 3.
 def right_key(str):
     return (str[-10:-4], date_format(str[-30:-24]))
 
-# Gets the sensor value of an observations in the sensor data csv's. Refer to step 3
+# Gets the sensor value of an observations in the sensor data csv's. Refer to step 3.
 def get_values(str):
     return float(str.split(';')[2])
 
-# 
+# Auxiliary function in the creation of the response variable. Yields 6 days
+# previous to "date", including "date". Refer to step 4.
 def createGenerator(date):
     for i in range(7): yield (date - timedelta(i), 1)
 
+# Calls previous generator function, creating 6 artificial dates previous to "date".
+# Refer to step 4.
 def create_priordays(date):
     return createGenerator(date)
 
+# Auxiliary function in the labeling part of the response variable. Refer to step 4.
 def response(value):
     return 0 if value is None else 1
 
+# Reads and format aircraft utilization metrics from PostgreSQL corresponding to flights
+# and non-scheduled maintenance events associated with sensor '3453'. Refer to step 2.
 def format_data_from_sources(sc):
 
     session = SparkSession(sc)
 
+    # open reading pipes
     dw = (session.read
                  .format("jdbc")
                  .option("driver","org.postgresql.Driver")
@@ -93,16 +101,14 @@ def format_data_from_sources(sc):
                 .option("password", DWpass)
                 .load())
 
-    # subsystem, starttime
-    # aircraftregistration
-
+    # load variables of interest
     load_dw = dw.select("aircraftid", "timeid", "flighthours",
                      "unscheduledoutofservice", "flightcycles", "delayedminutes").rdd
 
     load_amos = (amos.select("aircraftregistration", "starttime", "subsystem")
                      .where("subsystem = '3453' and (kind = 'Delay' or kind = 'AircraftOnGround' or kind == 'Safety')").rdd)
 
-    # we pick the right sensor from AMOS database and generate artifical dates,
+    # pick the right sensor from AMOS database and generate artifical dates,
     # which we use to add the response variable
     maintenance = (load_amos
                    .map(lambda t: (t[0], create_priordays(t[1].date())))
@@ -113,47 +119,49 @@ def format_data_from_sources(sc):
                    # delete duplicates
                    .reduceByKey(lambda t1,t2: t1))
 
-    # For each flight, mark if there has been unscheduled maintenance sometime
+    # for each flight, mark if there has been unscheduled maintenance sometime
     # in the next seven days.
     ACuti_Mevents = (load_dw
                      # select aircraftid, timeid, unscheduledoutofservice, FH, FC, DM
                      .map(lambda t: ((t[0], t[1]), (round(t[3]), round(float(t[2]), 2), int(t[4]), int(t[5]))))
-                     # We join with the sensors.
+                     # join with the sensor information.
                      .leftOuterJoin(maintenance)
-                     # t[1][0][0] (unscheduledoutofservice) !!!!!!!
+                     # (aircraftid, date), (FH, FC, DM, response)
                      .map(lambda t: ((t[0][0], t[0][1].strftime('%Y-%m-%d')), (t[1][0][1], t[1][0][2], t[1][0][3], response(t[1][1])))))
 
     return ACuti_Mevents
 
-
+# Load and process sensor data from local CSV's or HDFS. Refer to step 3.
 def data_from_csvs(sc, sess, loadfrom, csv_path):
-    # Get csvs from hdfs, remember to deploy avro dependencies
+    # get csvs from hdfs, remember to deploy avro dependencies
     # "org.apache.spark:spark-avro_2.11:2.4.3".
     # For this option previous execution of "load_into_hdfs.py" is required.
     if loadfrom == "hdfs":
         averages = (sess.read.format("avro")
-                              .load('hdfs://localhost:9000/user/chusantonanzas/sensordata')
-                              .rdd
-                              .map(lambda t: ((t[0][0], t[0][1]), t[1])))
+                             .load('hdfs://localhost:9000/user/chusantonanzas/sensordata')
+                             .rdd
+                             .map(lambda t: ((t[0][0], t[0][1]), t[1])))
 
     # read and process csvs from local
     elif loadfrom == "local":
         averages = (sc.wholeTextFiles(csv_path+"*.csv")
                       .flatMapValues(lambda t: t.split('\n'))
+                      # delete title and empty observations
                       .filter(lambda t: 'date' not in t[1] and len(t[1]) != 0)
+                      # compute averages for each 'date' and 'aircraftid'
                       .map(lambda t: (right_key(t[0]), (get_values(t[1]), 1)))
                       .reduceByKey(lambda t1,t2: (t1[0]+t2[0], t1[1]+t2[1]))
                       .mapValues(lambda t: t[0]/t[1]))
 
     return averages
 
-# Returns the sensor value of a sample.
+# Joins aircraft utilization metrics with sensor data and formats it.
+# Refer to step 5.
 def join_csvs_dwinfo(sc, averages, ACuti_Mevents):
     matrix = (ACuti_Mevents.join(averages)
                            # remove key values as its better to convert to 'libsvm' format
-                           .map(lambda t: (t[1][0][0], t[1][0][1], t[1][0][2], t[1][1], t[1][0][3]))
                            # ((aircraft, date), (FH, FC, DM, avg(sensor), response))
-                           # .mapValues(lambda t: (t[0][0], t[0][1], t[0][2], t[1], t[0][3]))
+                           .map(lambda t: (t[1][0][0], t[1][0][1], t[1][0][2], t[1][1], t[1][0][3]))
                            .cache())
     return matrix
 
@@ -173,22 +181,23 @@ if __name__ == '__main__':
     loadfrom = args.loadfrom
     csv_path = args.csvpath
 
-    # configure env. variables
+    # configure env. variables. Refer to step 1
     sc = config.config_env(version)
     sess = SparkSession(sc)
 
-    # read from amos and acuti necessary metrics
+    # read from amos and ACuti necessary metrics
     ACuti_Mevents = format_data_from_sources(sc)
 
     # read sensors info from hdfs
     averages = data_from_csvs(sc, sess, loadfrom, csv_path)
 
-    # create final data matrix
+    # create enriched aircraft utilization metrics (join sensor data)
     matrix = join_csvs_dwinfo(sc, averages, ACuti_Mevents)
 
-    # convert matrix rdd into libsvm matrix
+    # convert previous rdd into a 'libsvm' matrix
     labeledpoints = matrix.map(lambda t: LabeledPoint(t[4], t[:3]))
 
+    # get (local) saving path
     matrix_path = os.getcwd() + '/data_matrix/'
 
     # remove previous matrix version, if one

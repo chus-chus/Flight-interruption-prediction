@@ -37,15 +37,15 @@ from pyspark.sql import SQLContext
 from pyspark.sql import SparkSession
 
 
-# converts to datetime.date format. Refer to step 2
+# Converts to datetime.date format. Refer to step 2.
 def date_format(str):
     return '-'.join(("20"+str[4:6],str[2:4],str[0:2]))
 
-# Returns a KEY in ('aircraftid','dateid') format. Refer to step 2
+# Returns a KEY in ('aircraftid','dateid') format. Refer to step 2.
 def right_key(str):
     return (str[-10:-4], date_format(str[-30:-24]))
 
-# Returns the sensor value of a sample. Refer to step 2
+# Returns the sensor value of a sample. Refer to step 2.
 def get_values(str):
     return float(str.split(';')[2])
 
