@@ -113,7 +113,7 @@ def format_data_from_sources(sc):
     # which we use to add the response variable
     maintenance = (load_amos
                    .map(lambda t: (t[0], create_priordays(t[1].date())))
-                   # generate 6 dates before each unshceduled maintenance. INCLOIM EL DIA QUE MIREM??????????
+                   # generate 6 dates before each unshceduled maintenance.
                    .flatMapValues(lambda t: t)
                    # aircraftid, date, response
                    .map(lambda t: ((t[0], t[1][0]), t[1][1]))
