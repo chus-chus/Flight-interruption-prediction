@@ -6,6 +6,13 @@
 @info: BDA, GCED, Big Data Analytics project
 @date: 16/12/2019
 
+Description
+-----------
+Gets new flights (all parting from a specific date) from 'aircraftutilization',
+gets their corresponing average sensor values and predicts their response variable
+(if an unscheduled maintenance event is to happen sometime in the next 7 days) given
+a previously trained Decision Tree classifier. Saves results locally.
+
 Usage
 -----------
 Run after 'data_analysis.py', where the Decision Tree Classifier was trained and
@@ -13,13 +20,6 @@ saved. Can specify python version (3.7 or 3.6), date from where to begin picking
 new flights from 'aircraftutilization' and, if loading sensor data from local or
 HDFS and if the first case is true, the csv's path (specify if not in /resources/trainingData/).
 See arguments help for more details.
-
-Description
------------
-Gets new flights (all parting from a specific date) from 'aircraftutilization',
-gets their corresponing average sensor values and predicts their response variable
-(if an unscheduled maintenance event is to happen sometime in the next 7 days) given
-a previously trained Decision Tree classifier. Saves results locally.
 
 Steps enforced
 -----------
@@ -33,7 +33,6 @@ Steps enforced
 6. Load Decission Tree classifier
 7. Predict response variable
 8. Save results
-
 """
 import os
 import sys
@@ -169,7 +168,7 @@ if __name__ == '__main__':
     # Save matrix. This can change in future versions so that there is no
     # need to save and load it.
     MLUtils.saveAsLibSVMFile(labeledpoints, matrix_path)
-    print(f'Data matrix saved in {matrix_path}')
+    print(f'Test data matrix saved in {matrix_path}')
 
     # load the matrix.
     testdata = (sess.read.format("libsvm")

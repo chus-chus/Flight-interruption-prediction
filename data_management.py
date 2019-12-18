@@ -6,6 +6,12 @@ Data management pipe script
 @info: BDA, GCED, Big Data Analytics project
 @date: 16/12/2019
 
+Description
+-----------
+Extracts necesary data from sources (sensor data -locally or HDFS- and aircraft
+utilization), creates the response variable to train the model with and saves
+the data matrix locally.
+
 Usage
 -----------
 If reading sensor data from HDFS, this script is to be executed 2nd, after "load_into_hdfs.py".
@@ -15,11 +21,6 @@ from local or HDFS and if the first case is true, the csv's path
 The results from this script is a file "data_matrix" containing a 'libsvm'
 set of files representing the data matrix to feed into the model.
 
-Description
------------
-Extracts necesary data from sources (sensor data -locally or HDFS- and aircraft
-utilization), creates the response variable to train the model with and saves
-the data matrix locally.
 
 Steps enforced
 -----------

@@ -6,18 +6,18 @@ Data analysis pipe
 @info: BDA, GCED, Big Data Analytics project
 @date: 16/12/2019
 
-Usage
------------
-Run after 'data_management.py' or after training matrix is saved in local.
-In the arguments, one should specify if using Python version 3.6 or 3.7.
-This script saves a trained Decision Tree model in the current path ('model').
-
 Description
 -----------
 Given a data matrix in the specified 'libsvm' format and generated with 'data_management.py'
 trains a Decision Tree classifier with it, undersampling the majority class so
 that new percentages are approx. (60% '0', 40% '1'). Then, computes different
 metrics and saves the model locally.
+
+Usage
+-----------
+Run after 'data_management.py' or after training matrix is saved in local.
+In the arguments, one should specify if using Python version 3.6 or 3.7.
+This script saves a trained Decision Tree model in the current path ('model').
 
 Steps enforced
 -----------
