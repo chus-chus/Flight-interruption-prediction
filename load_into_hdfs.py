@@ -80,4 +80,4 @@ if __name__ == "__main__":
 
     # load them into HDFS as AVRO. Refer to step 3.
     csvs.write.mode("overwrite").format("avro").save(hdfs_path)
-    print(print(f'Sensor data saved in {hdfs_path}'))
+    print(f'Sensor data saved in {hdfs_path}')
