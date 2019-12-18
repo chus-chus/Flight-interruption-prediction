@@ -23,14 +23,14 @@ the data matrix locally.
 
 Steps enforced
 -----------
-1- Configure Spark environment
-2- Read and process (that is, create response variable) aircraft utilization
+1. Configure Spark environment
+2. Read and process (that is, create response variable) aircraft utilization
    information data from relational databases
-3- Read sensor data from local (in this case compute averages for each aircraft and date)
+3. Read sensor data from local (in this case compute averages for each aircraft and date)
    or HDFS (in this case averages are already processed) and format it correctly
-4- Generate response variable
-5- Enrich aircraft utilization information with sensor data (join observations)
-6- Transform resulting data set into 'libsvm' format for training the model
+4. Generate response variable
+5. Enrich aircraft utilization information with sensor data (join observations)
+6. Transform resulting data set into 'libsvm' format for training the model
    and save it locally
 """
 import os
@@ -181,20 +181,24 @@ if __name__ == '__main__':
     loadfrom = args.loadfrom
     csv_path = args.csvpath
 
+    version = 'python3.6' if version == 3.6 else 'python3.7'
+
     # configure env. variables. Refer to step 1
     sc = config.config_env(version)
     sess = SparkSession(sc)
 
-    # read from amos and ACuti necessary metrics
+    # read from 'AMOS' and 'aircraftutilization' necessary metrics and create
+    # response variable. Refer to steps 2 and 4
     ACuti_Mevents = format_data_from_sources(sc)
 
-    # read sensors info from hdfs
+    # read sensors info from hdfs or local csv's. Refer to step 3
     averages = data_from_csvs(sc, sess, loadfrom, csv_path)
 
-    # create enriched aircraft utilization metrics (join sensor data)
+    # create enriched aircraft utilization metrics (join sensor data).
+    # Refer to step 3
     matrix = join_csvs_dwinfo(sc, averages, ACuti_Mevents)
 
-    # convert previous rdd into a 'libsvm' matrix
+    # format previous rdd to 'labeled points'
     labeledpoints = matrix.map(lambda t: LabeledPoint(t[4], t[:3]))
 
     # get (local) saving path
