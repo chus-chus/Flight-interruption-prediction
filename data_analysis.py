@@ -63,7 +63,7 @@ def trainModel(data, sc):
     (trainingData, testData) = data.randomSplit([0.7, 0.3])
 
     # Balance training data. Refer to step 4
-    # Let us undersample the majority class.
+    # Let us undersample the majority class '0'.
     trainingrdd = trainingData.select('*').rdd
 
     yesdata = trainingrdd.filter(lambda t: t[0] == 1.0)

@@ -133,6 +133,7 @@ def format_data_from_sources(sc):
 
 # Load and process sensor data from local CSV's or HDFS. Refer to step 3.
 def data_from_csvs(sc, sess, loadfrom, csv_path):
+
     # get csvs from hdfs, remember to deploy avro dependencies
     # "org.apache.spark:spark-avro_2.11:2.4.3".
     # For this option previous execution of "load_into_hdfs.py" is required.
@@ -191,12 +192,14 @@ if __name__ == '__main__':
     # response variable. Refer to steps 2 and 4
     ACuti_Mevents = format_data_from_sources(sc)
 
-    # read sensors info from hdfs or local csv's. Refer to step 3
+    # read sensor information from HDFS or local csv's. Refer to step 3
     averages = data_from_csvs(sc, sess, loadfrom, csv_path)
 
     # create enriched aircraft utilization metrics (join sensor data).
-    # Refer to step 3
+    # Refer to step 5
     matrix = join_csvs_dwinfo(sc, averages, ACuti_Mevents)
+
+    # Model saving procedure (to local). Refer to step 6
 
     # format previous rdd to 'labeled points'
     labeledpoints = matrix.map(lambda t: LabeledPoint(t[4], t[:3]))

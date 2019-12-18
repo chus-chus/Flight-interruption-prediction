@@ -14,7 +14,7 @@ not repeated.
 
 Steps
 -----------
-1- Given a python version (string, i.e. "python3.6"), returns an object of type "Spark Context".
+1. Given a python version (string, i.e. "python3.6"), returns an object of type "Spark Context".
 """
 import os
 import sys
@@ -33,7 +33,9 @@ def config_env(version):
     os.environ["PYSPARK_PYTHON"] = PYSPARK_PYTHON
     os.environ["PYSPARK_DRIVER_PYTHON"] = PYSPARK_DRIVER_PYTHON
 
-    conf = SparkConf()  # create the configuration
+    # start the configuration
+
+    conf = SparkConf()
     conf.set("spark.jars", JDBC_JAR)
 
     spark = SparkSession.builder \
