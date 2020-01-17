@@ -21,7 +21,6 @@ from local or HDFS and if the first case is true, the csv's path
 The results from this script is a file "data_matrix" containing a 'libsvm'
 set of files representing the data matrix to feed into the model.
 
-
 Steps enforced
 -----------
 1. Configure Spark environment
@@ -59,7 +58,7 @@ def date_format(str):
 def right_key(str):
     return (str[-10:-4], date_format(str[-30:-24]))
 
-# Gets the sensor value of an observations in the sensor data csv's. Refer to step 3.
+# Gets the sensor value of an observation in the sensor data csv's. Refer to step 3.
 def get_values(str):
     return float(str.split(';')[2])
 
