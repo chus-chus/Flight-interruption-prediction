@@ -1,10 +1,9 @@
-@author: Jesus Antonanzas Acero, Alex Carrillo Alza
-@version: "1.0"
-@email: "jesus.maria.antonanzas@est.fib.upc.edu, alex.carrillo.alza@est.fib.upc.edu"
-@info: BDA, GCED, Big Data Analytics project
-@date: 16/12/2019
+*author*: Jesus Antonanzas Acero, Alex Carrillo Alza
+*version*: "1.0"
+*email*: "jesus.maria.antonanzas@est.fib.upc.edu, alex.carrillo.alza@est.fib.upc.edu"
+*info*: BDA, GCED, Big Data Analytics project
+*date*: 16/12/2019
 
--------------------------------------
 Our project should contain 5 '.py' scripts:
 - 'config.py': configures Spark environment when necessary
 - 'load_into_hdfs.py': loads sensor csv's into HDFS in AVRO format
